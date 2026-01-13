@@ -1,0 +1,943 @@
+{
+  "name": "AI Restaurant Ordering and Reservation Bot",
+  "nodes": [
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "customer_name",
+              "value": "=",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "message",
+              "value": "={{ $json.chatInput }}",
+              "type": "string"
+            },
+            {
+              "id": "id-3",
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "id-4",
+              "name": "menu",
+              "value": "=Drinks: Electric Lemonade, Classic Choco-Shake | Fries: Golden Truffle Fries, Cheesy Loaded Fries, | Burgers: Sizzle Beast Burger, Spicy Volcano Burger | Pizza: Pepperoni Inferno, Veggie Supreme",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e834eef8-f811-48f4-8f59-512eec5761e9",
+      "name": "Workflow Configuration",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1680,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"intent\": {\n      \"type\": \"string\",\n      \"description\": \"Customer intent: menu_request, place_order, reservation, or unknown\"\n    },\n    \"response\": {\n      \"type\": \"string\",\n      \"description\": \"Friendly chatbot response to customer\"\n    },\n    \"order_items\": {\n      \"type\": \"array\",\n      \"description\": \"List of ordered items with quantities (if placing order)\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"item_name\": {\n            \"type\": \"string\",\n            \"description\": \"Name of the ordered item\"\n          },\n          \"quantity\": {\n            \"type\": \"number\",\n            \"description\": \"Quantity of the ordered item\"\n          }\n        },\n        \"required\": [\"item_name\", \"quantity\"]\n      }\n    },\n    \"reservation_date\": {\n      \"type\": \"string\",\n      \"description\": \"Reservation date (if making reservation)\"\n    },\n    \"reservation_time\": {\n      \"type\": \"string\",\n      \"description\": \"Reservation time (if making reservation)\"\n    },\n    \"party_size\": {\n      \"type\": \"number\",\n      \"description\": \"Number of people for reservation (if making reservation)\"\n    }\n  }\n}",
+        "autoFix": true
+      },
+      "id": "48e1d528-ae51-4f7c-9fb8-b376edc6f49b",
+      "name": "Structured Output Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        -1264,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Workflow Configuration').item.json.message }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=You are a friendly restaurant assistant for a WhatsApp ordering and reservation bot.\n\nRESTAURANT MENU (with prices):\n- Drinks:\n  • Electric Lemonade — $4.49\n  • Classic Choco-Shake — $5.99\n- Fries:\n  • Golden Truffle Fries — $6.99\n  • Cheesy Loaded Fries — $7.99\n- Burgers:\n  • Sizzle Beast Burger — $12.99\n  • Spicy Volcano Burger — $10.99\n- Pizza:\n  • Pepperoni Inferno — $15.99\n  • Veggie Supreme — $14.49\n\nYour tasks:\n1. Detect customer intent: menu_request, price_query, place_order, reservation, or unknown.\n2. For menu requests: Provide the full menu with prices in a friendly format.\n3. For price queries: Identify the item requested and reply with the correct price(s). Use friendly emojis where appropriate.\n4. For orders: Extract items and quantities, confirm the order with prices and total amount.\n5. For reservations: Extract date and day, time, and party size, and confirm availability politely.\n6. For unclear messages: Ask for clarification in a warm, conversational way.\n\nCustomer name: {{ $('Workflow Configuration').item.json.customer_name }}\n\nResponse instructions:\n- Keep responses short, friendly, and easy to read on WhatsApp.\n- Always include emojis to make it engaging (🍔, 🍕, 🥤, 🍟, 📅, etc.).\n- If an item is not on the menu, politely inform the customer.\n- Confirm orders or reservations clearly with relevant details.\n\nExample responses:\n- Menu request: \"🍔 Here’s our menu with prices! ... Would you like to place an order?\"\n- Price query: \"💵 The Sizzle Beast Burger costs $12.99. Would you like to order one?\"\n- Order confirmation: \"✅ Thanks for your order! You ordered 1 Sizzle Beast Burger and 1 Electric Lemonade. Total: $16.48.\"\n- Reservation: \"📅 Your table for 4 guests on Saturday at 7 PM is confirmed! See you soon 😊\""
+        }
+      },
+      "id": "6775de9b-cf65-4fa0-b80d-e72a4bfe9ec9",
+      "name": "AI Restaurant Assistant",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -1456,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output.intent }}",
+                    "rightValue": "menu_request",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "99bd1a27-62fc-4aaa-9f01-b634ea7f1ab8"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output.intent }}",
+                    "rightValue": "place_order",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "63c2b224-a230-4964-a3a5-f264bb17475c"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Place Order"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output.intent }}",
+                    "rightValue": "reservation",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "253b4175-f470-4c10-8d7e-16a512ccd5e0"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Reservation"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output.intent }}",
+                    "rightValue": "unknown",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "67c38756-428e-4ca3-a0bd-e2dd7b2f37b9"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Unknown"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "27f243dc-7261-483b-a29a-37c0990b3909",
+                    "leftValue": "={{ $json.output.intent }}",
+                    "rightValue": "price_query",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Price Query"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "de75888f-9cd9-4276-9b97-f667c79e189a",
+      "name": "Route by Intent",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -896,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "whatsapp_message",
+              "value": "={{ $json.output.response }}",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "customer_name",
+              "value": "={{ $('Workflow Configuration').item.json.customer_name }}",
+              "type": "string"
+            },
+            {
+              "id": "id-3",
+              "name": "intent",
+              "value": "={{ $json.output.intent }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "20de358d-0501-4ed0-956d-dc04f79dd1ed",
+      "name": "Format Menu Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "whatsapp_message",
+              "value": "={{ $json.whatsapp_message }}",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "customer_name",
+              "value": "={{ $('Workflow Configuration').item.json.customer_name }}",
+              "type": "string"
+            },
+            {
+              "id": "id-3",
+              "name": "reservation_date",
+              "value": "={{ $json.res_date }}",
+              "type": "string"
+            },
+            {
+              "id": "id-4",
+              "name": "reservation_time",
+              "value": "={{ $json.res_time }}",
+              "type": "string"
+            },
+            {
+              "id": "id-5",
+              "name": "party_size",
+              "value": "={{ $json.res_guests }}",
+              "type": "number"
+            },
+            {
+              "id": "id-6",
+              "name": "status",
+              "value": "Confirmed",
+              "type": "string"
+            },
+            {
+              "id": "b3830067-e2b4-4365-a72c-94236ec39b1d",
+              "name": "reservation_id",
+              "value": "={{ $json.reservation_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "97f5e325-b1e3-4733-adbc-d3acefe4edc4",
+      "name": "Format Reservation Confirmation",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -448,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "response",
+              "value": "={{ $json.output.response }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4ee47e7c-fcdb-4d65-a797-9c99bbb5f311",
+      "name": "Format Clarification Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        576
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $env.GOOGLE_SHEETS_DOC_ID }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1uD0ZEEv9iy0MgYlnTv8gcLFUBaDxLPdsh1Ft1odUi0s/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Quantities": "={{ $('Route by Intent').item.json.output.order_items[0].quantity }}",
+            "Orders Status": "={{ $json.status }}",
+            "Items": "={{ $('Route by Intent').item.json.output.order_items }}",
+            "Timestamp": "={{ $('Workflow Configuration').item.json.timestamp }}",
+            "Total Amount": "={{ $json.total_price }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Order ID",
+              "displayName": "Order ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Customer ID",
+              "displayName": "Customer ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Items",
+              "displayName": "Items",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Quantities",
+              "displayName": "Quantities",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Total Amount",
+              "displayName": "Total Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Orders Status",
+              "displayName": "Orders Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -224,
+        192
+      ],
+      "id": "6ba932f8-b436-426c-9829-cceed01ea3a0",
+      "name": "Append row in sheet"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $env.GOOGLE_SHEETS_DOC_ID }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1215260006,
+          "mode": "list",
+          "cachedResultName": "Sheet2",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1uD0ZEEv9iy0MgYlnTv8gcLFUBaDxLPdsh1Ft1odUi0s/edit#gid=1215260006"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Customer Name": "={{ $json.customer_name }}",
+            "Date": "={{ $json.reservation_date }}",
+            "Status": "={{ $json.status }}",
+            "Timestamp": "={{ $('Workflow Configuration').item.json.timestamp }}",
+            "Guests": "={{ $('Code in JavaScript1').item.json.res_guests }}",
+            "Time Slot": "={{ $('Code in JavaScript1').item.json.res_time }}",
+            "Reservation ID": "={{ $json.reservation_id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Reservation ID",
+              "displayName": "Reservation ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Customer Name",
+              "displayName": "Customer Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Time Slot",
+              "displayName": "Time Slot",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Guests",
+              "displayName": "Guests",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -224,
+        384
+      ],
+      "id": "39f0f7cc-4da1-4718-a58c-3a72670c2220",
+      "name": "Append row in sheet1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "RLXqtjK5REZiDg76",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "response",
+              "value": "={{ $json.output.response }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0d98b70e-eaf5-411c-83bf-76cafbfbdbbe",
+      "name": "Format Price Details",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        768
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ---------- MENU WITH PRICES ----------\nconst menu = {\n  \"electric lemonade\": 4.49,\n  \"classic choco-shake\": 5.99,\n  \"golden truffle fries\": 6.99,\n  \"cheesy loaded fries\": 7.99,\n  \"sizzle beast burger\": 12.99,\n  \"spicy volcano burger\": 10.99,\n  \"pepperoni inferno\": 15.99,\n  \"veggie supreme\": 14.49\n};\n\n// ---------- INPUT HANDLING ----------\n// This line looks for order_items in both the top level and inside an 'output' object\nconst inputData = $json.output || $json; \nconst customerName = inputData.customer_name || \"Valued Customer\";\n\n// Access the array of items\nconst orderItems = Array.isArray(inputData.order_items) ? inputData.order_items : [];\n\n// ---------- CALCULATION ----------\nlet total = 0;\nlet orderSummary = \"\";\n\norderItems.forEach((entry) => {\n  // Use 'item_name' exactly as seen in your Schema screenshot\n  const itemName = entry.item_name || entry.item || \"Unknown Item\";\n  const qty = parseInt(entry.quantity) || 0;\n  \n  // Convert name to lowercase to match our menu object keys\n  const price = menu[itemName.toLowerCase()] || 0;\n  const itemTotal = price * qty;\n\n  if (qty > 0) {\n    total += itemTotal;\n    orderSummary += `🍽️ ${itemName} x ${qty} — $${itemTotal.toFixed(2)}\\n`;\n  }\n});\n\n// ---------- VALIDATION ----------\nif (orderSummary === \"\") {\n    orderSummary = \"❌ No items were found. Please check the item names.\\n\";\n}\n\n// ---------- WHATSAPP MESSAGE ----------\nconst message =\n  `✅ Thanks ${customerName}! Here’s your order summary:\\n\\n` +\n  orderSummary +\n  `\\n💰 *Total: $${total.toFixed(2)}*\\n\\n` +\n  `Reply:\\n` +\n  `1️⃣ Confirm Order\\n` +\n  `2️⃣ Edit Order\\n` +\n  `3️⃣ Cancel Order`;\n\n// ---------- OUTPUT ----------\nreturn [{\n  json: {\n    intent: \"place_order\",\n    whatsapp_message: message,\n    total_price: total.toFixed(2),\n    customer_name: customerName\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -448,
+        192
+      ],
+      "id": "25e5a394-97b0-41d7-a18a-4ca6e9f79091",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ---------- SECURITY FUNCTIONS ----------\nfunction sanitizeInput(input) {\n  if (typeof input !== 'string') return '';\n  return input.replace(/[<>\"'&\\\\]/g, '').trim().substring(0, 100);\n}\n\nfunction validatePartySize(size) {\n  const num = parseInt(size) || 0;\n  return Math.max(1, Math.min(num, 20)); // 1-20 guests\n}\n\nfunction generateSecureId() {\n  const timestamp = Date.now().toString(36);\n  const random = Math.random().toString(36).substring(2, 8);\n  return `RES-${timestamp}-${random}`.toUpperCase();\n}\n\n// ---------- INPUT HANDLING ----------\nconst inputData = $json.output || $json; \nconst customerName = sanitizeInput(inputData.customer_name) || \"Guest\";\n\n// Generate secure reservation ID\nconst resId = generateSecureId();\n\nconst resDate = sanitizeInput(inputData.reservation_date) || \"Not specified\";\nconst resTime = sanitizeInput(inputData.reservation_time) || \"Not specified\";\nconst guests = validatePartySize(inputData.party_size);\nconst aiFriendlyResponse = sanitizeInput(inputData.response) || \"\";\n\n// ---------- VALIDATION ----------\nif (resDate === \"Not specified\" || resTime === \"Not specified\") {\n    throw new Error(\"Invalid reservation data\");\n}\n\nconst message = \n  `🆔 *Reservation ID: ${resId}*\\n` +\n  `🗓️ *Confirmation* \\n\\n` +\n  `${aiFriendlyResponse}\\n\\n` +\n  `👤 Guests: ${guests}\\n` +\n  `📅 Date: ${resDate}\\n` +\n  `⏰ Time: ${resTime}\\n\\n` +\n  `Please keep your ID for check-in! ✨`;\n\nreturn [{\n  json: {\n    reservation_id: resId,\n    whatsapp_message: message,\n    res_date: resDate,\n    res_time: resTime,\n    res_guests: guests,\n    customer_name: customerName\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -672,
+        384
+      ],
+      "id": "e6cdb626-3bef-4bf1-a454-7b1e3c85ae4c",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseMode": "responseNodes",
+          "loadPreviousSession": false,
+          "authentication": "headerAuth",
+          "authPropertyName": "x-webhook-secret"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -1872,
+        384
+      ],
+      "id": "d2365421-5348-4172-ae87-472b3751d244",
+      "name": "When chat message received",
+      "webhookId": "={{ $env.WEBHOOK_ID }}"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7504b71e-99cf-418b-a92e-58f7296cb8d9",
+              "name": "response",
+              "value": "={{ $('Format Reservation Confirmation').item.json.whatsapp_message }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        384
+      ],
+      "id": "be53b295-fc62-4039-8a4a-2e1b45af7be8",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "message": "={{ $('Route by Intent').item.json.output.response }}",
+        "waitUserReply": false,
+        "options": {
+          "memoryConnection": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chat",
+      "typeVersion": 1,
+      "position": [
+        304,
+        384
+      ],
+      "id": "e8ddba9d-dec4-496b-92b3-316e63958416",
+      "name": "Respond to Chat"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7504b71e-99cf-418b-a92e-58f7296cb8d9",
+              "name": "response",
+              "value": "={{ $('Code in JavaScript').item.json.whatsapp_message }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        192
+      ],
+      "id": "8286f37d-5bc5-4332-b9e8-2562f546c3e8",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('When chat message received').item.json.sessionId }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -1408,
+        608
+      ],
+      "id": "ff6f6c14-a0e7-49fc-8df0-58f32024f445",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -1600,
+        592
+      ],
+      "id": "32f280ce-f0ca-45bc-b4ee-b8ee72313d68",
+      "name": "Google Gemini Chat Model"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Workflow Configuration": {
+      "main": [
+        [
+          {
+            "node": "AI Restaurant Assistant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Restaurant Assistant",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Restaurant Assistant": {
+      "main": [
+        [
+          {
+            "node": "Route by Intent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Intent": {
+      "main": [
+        [
+          {
+            "node": "Format Menu Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Clarification Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Price Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Reservation Confirmation": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Menu Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Clarification Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Price Details": {
+      "main": [
+        [
+          {
+            "node": "Respond to Chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Format Reservation Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Workflow Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Respond to Chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Restaurant Assistant",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Restaurant Assistant",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Structured Output Parser",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "",
+  "meta": {
+    "instanceId": "c63a23edd6c82000f197e21115ac8be95e5b1c5d76b8a14ddf38f025fdb23fe5"
+  },
+  "id": "fAEahhUc8oPwb_xM_y8_F",
+  "tags": []
+}
